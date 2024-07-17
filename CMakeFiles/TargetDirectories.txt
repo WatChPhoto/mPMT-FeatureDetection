@@ -1,0 +1,4 @@
+/home/tapendra/ellipse_detection/CMakeFiles/rebuild_cache.dir
+/home/tapendra/ellipse_detection/CMakeFiles/edit_cache.dir
+/home/tapendra/ellipse_detection/CMakeFiles/FindEllipse.dir
+/home/tapendra/ellipse_detection/CMakeFiles/featurereco_lib.dir
