@@ -1,2 +1,0 @@
-/usr/bin/ar qc libfeaturereco_lib.a  CMakeFiles/featurereco_lib.dir/Configuration.cpp.o CMakeFiles/featurereco_lib.dir/ellipse.cpp.o CMakeFiles/featurereco_lib.dir/hough_ellipse.cpp.o CMakeFiles/featurereco_lib.dir/distance_to_ellipse.cpp.o CMakeFiles/featurereco_lib.dir/PMTIdentified.cpp.o CMakeFiles/featurereco_lib.dir/MedianTextReader.cpp.o CMakeFiles/featurereco_lib.dir/ellipse_intersection.cpp.o CMakeFiles/featurereco_lib.dir/featureFunctions.cpp.o
-/usr/bin/ranlib libfeaturereco_lib.a

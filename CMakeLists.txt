@@ -16,3 +16,9 @@ ADD_LIBRARY( featurereco_lib Configuration.cpp ellipse.cpp hough_ellipse.cpp dis
 include_directories( ${OpenCV_INCLUDE_DIRS} ${ROOT_INCLUDE_DIRS})
 add_executable( FindEllipse find_ellipses.cpp )
 target_link_libraries( FindEllipse featurereco_lib ${OpenCV_LIBS} ${ROOT_LIBS} ROOT::Core ROOT::Hist ROOT::Graf)
+
+project( blobDetection )
+find_package( OpenCV REQUIRED )
+include_directories( ${OpenCV_INCLUDE_DIRS} ${ROOT_INCLUDE_DIRS})
+add_executable( blobDetection blobDetection.cpp )
+target_link_libraries( blobDetection ${OpenCV_LIBS} )
