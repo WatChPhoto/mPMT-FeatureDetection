@@ -20,7 +20,14 @@ cv::Mat draw_blobs(cv::Mat img_i, std::vector<cv::KeyPoint> keypoints);
 
 std::string new_filename(std::string filename);
 
+double norm(cv::Matx31d vector){
+  double x = vector(0,0);
+  double y = vector(1,0);
+  double z = vector(2,0);
+  double norm_sqr = x*x + y*y + z*z;
 
+  return std::sqrt(norm_sqr);
+}
 
 int main(int argc, char** argv){
   // Read image and apply filter
@@ -70,15 +77,19 @@ int main(int argc, char** argv){
   double fy = 3529.99646;  // Focal length in y direction
   double cx = 4506.97897;  // Principal point x coordinate
   double cy = 3192.566;  // Principal point y coordinate
-  cv::Mat K = (cv::Mat_<double>(3, 3) << fx, 0, cx, 0, fy, cy, 0, 0, 1);
+  
+  cv::Matx33d K ( fx, 0, cx,
+		  0, fy, cy,
+		  0, 0, 1);
+  
 
   // Solve for the extrinsic parameters using OpenCV
-  cv::Mat rotation_vector, translation_vector;
-  bool success = cv::solvePnP(pts_3D, pts, K, cv::Mat(), rotation_vector, translation_vector);
+  cv::Matx31d rotation_vector, translation_vector;
+  bool success = cv::solvePnP(pts_3D, pts, K, cv::Mat(), rotation_vector, translation_vector); //make sure there is correspondence bet'n 2d and 3d points
 
   if (success) {
       // Convert rotation vector to rotation matrix
-      cv::Mat R;
+      cv::Matx33d R;
       cv::Rodrigues(rotation_vector, R);
 
       // Compute covariance matrix of rotation and translation vectors
@@ -91,46 +102,51 @@ int main(int argc, char** argv){
       cv::Mat std_dev;
       cv::sqrt(Sigma.diag(), std_dev);
       // Rotation vector and rotation matrix:
-      cv::Mat dev_rvec = ( cv::Mat_<double>(3, 1) << std_dev.at<double>(0, 0), std_dev.at<double>(0, 1), std_dev.at<double>(0, 2) );
-      cv::Mat dev_R;
+      cv::Matx31d dev_rvec( std_dev.at<double>(0, 0),
+			    std_dev.at<double>(0, 1),
+			    std_dev.at<double>(0, 2) );
+      cv::Matx33d dev_R;
       cv::Rodrigues(dev_rvec, dev_R);
+      
       // Translation vector:
-      cv::Mat dev_tvec = ( cv::Mat_<double>(3, 1) << std_dev.at<double>(0, 3), std_dev.at<double>(0, 4), std_dev.at<double>(0, 5) );
+      cv::Matx31d dev_tvec( std_dev.at<double>(0, 3),
+			    std_dev.at<double>(0, 4),
+			    std_dev.at<double>(0, 5) );
       
       // Calculate distance from center of mPMT to camera (with translation vector)
-      double distance = 0.;
-      for (int i = 0; i < translation_vector.rows; ++i) { distance = std::pow(translation_vector.at<double>(i, 0), 2); }
-      distance = std::sqrt(distance);
+      double distance = norm(translation_vector);
       // Distance uncertainty with translation vector:
       double delta_distance = (1/distance) * std::sqrt(
-                                                       std::pow( translation_vector.at<double>(0, 0) * dev_tvec.at<double>(0,0), 2) +
-                                                       std::pow( translation_vector.at<double>(0, 1) * dev_tvec.at<double>(0, 1), 2) +
-                                                       std::pow( translation_vector.at<double>(0, 2) * dev_tvec.at<double>(0, 2), 2)
+                                                       std::pow( translation_vector(0, 0) * dev_tvec(0,0), 2) +
+                                                       std::pow( translation_vector(0, 1) * dev_tvec(0, 1), 2) +
+                                                       std::pow( translation_vector(0, 2) * dev_tvec(0, 2), 2)
                                                        );
       
       // Translation vector in Real World coordinates (camera position)
-      cv::Mat tvec_rw = -1 * R.t() * translation_vector;
+      cv::Matx31d tvec_rw = -R.t() * translation_vector;
       // Uncertainty camera position
-      cv::Mat dev_tvec_rw = (cv::Mat_<double>(3, 1) << 0., 0., 0.);
+      cv::Matx31d dev_tvec_rw( 0.,
+			      0.,
+			      0.);
+      
       for (int i = 0; i < tvec_rw.rows; i++) {
           double uncer_i = 0.;
           for (int j = 0; j < tvec_rw.rows; j++) {
-              uncer_i += std::pow( translation_vector.at<double>(i,0) * dev_R.at<double>(j, i), 2);
-              uncer_i += std::pow( R.at<double>(j, i) * dev_tvec.at<double>(j,0), 2);
+              uncer_i += std::pow( translation_vector(i,0) * dev_R(j, i), 2);
+              uncer_i += std::pow( R(j, i) * dev_tvec(j,0), 2);
           }
           uncer_i = std::sqrt(uncer_i);
-          dev_tvec_rw.at<double>(i, 0) = uncer_i;
+          dev_tvec_rw(i, 0) = uncer_i;
       }
 
       // Distance calculation using camera position (Real World coordinates)
-      double distance_rw = 0.;
-      for (int i = 0; i < tvec_rw.rows; ++i) { distance_rw = std::pow(tvec_rw.at<double>(i, 0), 2); }
-      distance_rw = std::sqrt(distance_rw);
+      double distance_rw = norm(tvec_rw); 
+
       // Distance uncertainty with real world vector:
       double delta_distance_rw = (1 / distance_rw) * std::sqrt(
-                                                               std::pow(dev_tvec_rw.at<double>(0, 0) * dev_tvec_rw.at<double>(0, 0), 2) +
-                                                               std::pow(dev_tvec_rw.at<double>(0, 1) * dev_tvec_rw.at<double>(0, 1), 2) +
-                                                               std::pow(dev_tvec_rw.at<double>(0, 2) * dev_tvec_rw.at<double>(0, 2), 2)
+                                                               std::pow(dev_tvec_rw(0, 0) * dev_tvec_rw(0, 0), 2) +
+                                                               std::pow(dev_tvec_rw(0, 1) * dev_tvec_rw(0, 1), 2) +
+                                                               std::pow(dev_tvec_rw(0, 2) * dev_tvec_rw(0, 2), 2)
                                                                );
 
       // Print results
