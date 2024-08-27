@@ -46,47 +46,48 @@ thresh_high = 230   #The gradient valu agreater than this will be kept.
 threshold = 0
 
 #Blob parameters
-blob_minThreshold = 80#100 #80#90#80 #160  #100 #30 #80 #90  #min threshold of color to consider for blob
-blob_maxThreshold = 255#255 #150#200 #180#255 #max threshold of color to consider for blob 
+blob_minThreshold = 80 #100 #80#90#80 #160  #100 #30 #80 #90  #min threshold of color to consider for blob
+blob_maxThreshold = 255 #255 #150#200 #180#255 #max threshold of color to consider for blob 
 blob_filterByArea = 1 #1 for true 0 for false
-blob_minArea = 3#5 #3 #4 #6      #Min area to consider as a blob
-blob_maxArea = 70#1000#70     #Max area to consider as a blob                                                                                  
+blob_minArea = 3 #5 #3 #4 #6      #Min area to consider as a blob
+blob_maxArea = 70 #1000#70     #Max area to consider as a blob                                                                                  
 blob_filterByCircularity = 0 #1 for true 0 for false
 blob_minCircularity = 0.003 #0.0003 #0.003 #0.3   #Min circularity value to consider as a blob
-blob_minDistBetweenBlobs = 10#1#10#40 #35 #30 #25#10 #20 #10 #10 #Minimum distance between the blobs
+blob_minDistBetweenBlobs = 10 #1#10#40 #35 #30 #25#10 #20 #10 #10 #Minimum distance between the blobs
 blob_filterByConvexity = 0  #1 for true 0 for false
 blob_minConvexity = 0.6   #Minimum convexity to consider as a blob
 blob_filterByInertia = 0  #1 for true 0 for false
 blob_minInertiaRatio = 0.00001   #It can be thought as essentricity of ellipse
 
 #Hough transform parameters
+#Hough circle detection
 hough_dp = 1 # Inverse ratio of the accumulator resolution to the image resolution. For example, if dp=1 , the accumulator has the same resolution as the input image. If dp=2 , the accumulator has half as big width and height. |1 is the best
 hough_minDist = 20 #25 #20 #35 # min distance between circles
-hough_param1 = 150 #100 # threshold placed on image| Minimum brightness to use for hough space
-hough_param2 = 9 #7  # minimum accumulator value to call it a circle
+hough_param1 = 30 #100 # threshold placed on image| Minimum brightness to use for hough space
+hough_param2 =  6 #4 #7  # minimum accumulator value to call it a circle
 hough_minR = 3 #5 # minimum radius in pixels
-hough_maxR = 6 #10 # maximum radius in pixels
+hough_maxR = 20 #10 # maximum radius in pixels
 
 # Ellipse hough transform
 do_ellipse_hough = 1  # 1 for true, 0 for false
-ellipse_hough_minhits      =  9
-ellipse_hough_threshold    = 120   # hough space count to stop finding ellipses
-ellipse_hough_drscale      = 4.0  # multiplier to pixel diagonal length to associate points 2 ellipse
-ellipse_hough_nbins_bb     =  50  
-ellipse_hough_nbins_ee     =  10  
-ellipse_hough_nbins_phiphi =  11  
-ellipse_hough_nbins_x      = 975
-ellipse_hough_nbins_y      = 700
-ellipse_hough_bbmin        = 70  
-ellipse_hough_bbmax        = 110 
-ellipse_hough_eemin        =   0.0
-ellipse_hough_eemax        =  0.35
+ellipse_hough_minhits      = 6 #4
+ellipse_hough_threshold    = 5 #4 #120   # hough space count to stop finding ellipses
+ellipse_hough_drscale      = 15.0  # multiplier to pixel diagonal length to associate points 2 ellipse
+ellipse_hough_nbins_bb     =  60 #100 #50  
+ellipse_hough_nbins_ee     =  30
+ellipse_hough_nbins_phiphi =  11
+ellipse_hough_nbins_x      = 470 #975
+ellipse_hough_nbins_y      = 310 #700
+ellipse_hough_bbmin        = 600 #400->leds.jpg #70  
+ellipse_hough_bbmax        = 1000 #800->leds.jpg #120 
+ellipse_hough_eemin        =  0.01
+ellipse_hough_eemax        =  0.9 #0.6
 ellipse_hough_phphimin     =   0.0 
 ellipse_hough_phiphimax    = 3.14159265359
-ellipse_hough_xmin         =  100
-ellipse_hough_xmax         =  3900
-ellipse_hough_ymin         = 100
-ellipse_hough_ymax         = 2900
+ellipse_hough_xmin         =  100 #100
+ellipse_hough_xmax         =  9400 #9504 #3900
+ellipse_hough_ymin         = 100 #100
+ellipse_hough_ymax         = 6200 #6336 #2900
 
 #Second Hough transform parameters
 sec_hough_dp = 1 # Inverse ratio of the accumulator resolution to the image resolution. For example, if dp=1 , the accumulator has the same resolution as the input image. If dp=2 , the accumulator has half as big width and height. |1 is the best

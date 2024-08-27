@@ -245,8 +245,8 @@ const HoughEllipseResults& EllipseHough::find_ellipses( const std::vector< xypoi
       
       
       fresults.push_back( hr );
-      //save_hough_histo( fresults.size(), hr );
-      //plot_candidate( fresults.size(), hr );
+      save_hough_histo( fresults.size(), hr );
+      plot_candidate( fresults.size(), hr );
     }
     
     if ( nfound == 0 ) done = true;
@@ -460,7 +460,7 @@ std::vector< HoughEllipseResult> EllipseHough::find_maximum( std::vector< xypoin
   // use bin sizes in xc, yc as threshold distance for hit to be from circle
   float fxbwid = (fxmax-fxmin)/fNx;
   float fybwid = (fymax-fymin)/fNy;
-  float rthres = 3;//drscaling * std::sqrt( fxbwid*fxbwid + fybwid*fybwid );
+  float rthres = drscaling; //5.0; //drscaling * std::sqrt( fxbwid*fxbwid + fybwid*fybwid );
   
   
   std::sort( passed_threshold.begin(), passed_threshold.end() );

@@ -1,8 +1,8 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.16...3.24)
 project( FindEllipse )
 find_package( OpenCV REQUIRED )
 find_package( ROOT 6.18 CONFIG REQUIRED)
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17) # This line needs to be modified in the FeatureReco repository
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(NOT CMAKE_BUILD_TYPE)
