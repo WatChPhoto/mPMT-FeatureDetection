@@ -1,5 +1,5 @@
 # mPMT-FeatureDetection
-Look at find_ellipse.cpp to see how to implement ellipse detection.
+This code detects blobs on the image, uses them to fit an ellipse, and then does pose estimation to see the camera position depending on each center of the ellipse.
 
 To do:
-* List of Points in the world should have correspondence with list of points in the image. Make sure there is a correspondence. Currently there is not.
+* Do HoughEllipseDetection
