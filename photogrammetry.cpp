@@ -47,49 +47,62 @@ int main(int argc, char** argv){
   cv::Mat img = apply_bilateral_filter(img_original); // bilateral is better for edge detection
 
   // Detect and draw blobs on image
-  std::vector<cv::KeyPoint> keypoints = detect_blobs(img); // To change BlobDetector parameters, change function: set_parameters_BD()
+  std::vector<cv::KeyPoint> keypoints = detect_blobs(img); // To change BlobDetector parameters, change function: Config.txt or function set_parameters_BD()
   cv::Mat img_with_keypoints = draw_blobs(img, keypoints);
 
-  // Store center of blobs in vector (NOT ORDERED INDEX YET)
-  std::vector<cv::Point2f> pts;
-  for(int i=0; i<keypoints.size(); i++) { pts.push_back( keypoints[i].pt ); }
-  
-  // Fit Ellipse:
-  cv::RotatedRect box = cv::fitEllipse(pts); // Function only works with cv::Point2f, not with cv::Point2d
-  cv::ellipse(img_with_keypoints, box, cv::Scalar(0,0,255), 3, cv::LINE_AA); // 3 is thickness
-  cv::circle(img_with_keypoints, box.center, 10, cv::Scalar(0,255,0), 10, cv::LINE_AA); // 10 is radius and 10 is thickness
-  // circle is for drawing center
+  // Store center of blobs in a vector (NOT ORDERED INDEX YET)
+  std::vector< cv::Vec3f > blobs; // format (x,y,radious)
+  for (int i = 0; i < keypoints.size(); i++) { 
+      cv::Vec3f blob = cv::Point3f(keypoints[i].pt.x, keypoints[i].pt.y, keypoints[i].size/2.);
+      blobs.push_back(blob);
+  }
 
-  // Order blobs counter-clockwise, and draw their index
-  order_blobs(pts, box.center);
-  draw_index(img_with_keypoints, pts);
-  
-  // Save and display new image
-  std::string filename_output = new_filename(filename);
-  save_img(img_with_keypoints, filename_output);
-  //display_img(filename_output);
+  // HOUGH ELLIPSE DETECTION:
+  //TFile* fout = new TFile("FindBoltLocation.root", "RECREATE"); // Uncomment these lines for ROOT histograms of Hough Space
+  std::vector< PMTIdentified > mPMTs = slow_ellipse_detection(blobs, img, true, filename);
+  //fout->Write(); // Uncomment these lines for ROOT histograms of Hough Space
+  //fout->Close(); // Uncomment these lines for ROOT histograms of Hough Space
 
-  // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  // FINDING CAMERA POSITION:
-  // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- 
-      int n_LEDs = 6;
-      double Diameter = 0.3453; // meters [m]
+  for (const PMTIdentified& pmt : mPMTs) {
+
+      // Store blobs of the current ellipse inside a vector
+      std::vector<cv::Point2f> pts;
+      for (const Vec3f& led : pmt.bolts) {
+          float xx = led[0]; float yy = led[1];
+          cv::Point2f point = cv::Point2f(xx, yy);
+          pts.push_back(point);
+      }
+      // Store center of the current mPMT
+      cv::Point2f centerPMT = cv::Point2f(pmt.circ.get_xy().x, pmt.circ.get_xy().y);
+      
+      // Order blobs counter-clockwise, and draw their index
+      order_blobs(pts, centerPMT);
+      std::string filename_output = new_filename(filename);
+      cv::Mat img_output = read_img(filename_output);
+      draw_index(img_output, pts);
+      save_img(img_output, filename_output);
+
+      // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      // FINDING CAMERA POSITION:
+      // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+      int n_LEDs = (int)config::Get_int("mPMT_nLEDs");
+      double Diameter = (double)config::Get_double("mPMT_Diameter");
 
       // Camera matrix:
-      cv::Mat K = set_camera_matrix(); // Parameters can be changed inside function
-      
+      cv::Mat K = set_camera_matrix(); // Parameters can be changed from Config.txt file or inside function
+
       // Setting real world points: LEDs. Origin will be ellipse center.
-      std::vector<cv::Point3d> pts_3D = set_realworld_pts(pts, box.center, n_LEDs, Diameter);
+      std::vector<cv::Point3d> pts_3D = set_realworld_pts(pts, centerPMT, n_LEDs, Diameter);
 
       // Solve for the extrinsic parameters using OpenCV
       cv::Mat rvec, tvec;
       bool success = cv::solvePnP(pts_3D, pts, K, cv::Mat(), rvec, tvec);
-      if(!success) {
-           std::cerr << "\nsolvePnP failed to find a solution for extrinsic parameters. Exiting...\n";
-           exit(1);
+      if (!success) {
+          std::cerr << "\nsolvePnP failed to find a solution for extrinsic parameters. Exiting...\n";
+          exit(1);
       }
-      
+
       // Compute covariance matrix of extrinsic parameters
       cv::Mat Jacobian;
       std::vector<cv::Point2d> probe;
@@ -106,7 +119,7 @@ int main(int argc, char** argv){
       cv::Mat rmat;
       cv::Rodrigues(rvec, rmat);
       cv::Mat dev_rmat = calc_dev_rmat_brute(rvec, dev_rvec);
-      
+
       // Translation vector in Real World coordinates (camera position)
       cv::Mat tvec_rw = -1 * rmat.t() * tvec;
       cv::Mat dev_tvec_rw = calc_uncer_camera_position(tvec, rmat, dev_tvec, dev_rmat);
@@ -119,7 +132,15 @@ int main(int argc, char** argv){
       double distance_rw = calc_vec_magnitude(tvec_rw);
       double delta_distance_rw = calc_uncer_vec_magnitude(tvec_rw, dev_tvec_rw);
 
+      // Print photogrammetry results for current mPMT:
+      std::cout << "\n======================================================================================\n";
+      std::cout << "\nPhotogrammetry results for mPMT at pixel " << centerPMT << " with LEDs:" << std::endl;
+      for (int ii = 0; ii < n_LEDs; ii++) {
+          std::cout << "LED_" << ii << " at pixel " << pts[ii] << std::endl;
+      }
       print_results(tvec, dev_tvec, rvec, dev_rvec, rmat, dev_rmat, tvec_rw, dev_tvec_rw, distance, delta_distance, distance_rw, delta_distance_rw);
+
+  }
 
   return 0;
 }
@@ -158,28 +179,28 @@ cv::SimpleBlobDetector::Params set_parameters_BD()
 
   // By color. This filter compares the intensity of a binary image at the center of a blob to blobColor. If they differ, the blob is filtered out. 
   // Use blobColor = 0 to extract dark blobs and blobColor = 255 to extract light blobs.
-  params.blobColor = 255;
+  params.blobColor = (int)config::Get_int("blob_color"); //255;
   
   // Change thresholds
-  params.minThreshold = 5;
-  params.maxThreshold = 255;
+  params.minThreshold = (float)config::Get_double("blob_minThreshold"); //5;
+  params.maxThreshold = (float)config::Get_double("blob_maxThreshold"); //255;
   
   // Filter by Area.
-  params.filterByArea = true;
-  params.minArea = 12; // before(=400) couldn't detect blobs in simulated LED
+  params.filterByArea = (bool)((int)config::Get_int("blob_filterByArea")); //true;
+  params.minArea = (float)config::Get_double("blob_minArea"); //12; // before(=400) couldn't detect blobs in simulated LED
   
   // Filter by Circularity
-  params.filterByCircularity = true;
-  params.minCircularity = 0.1;
+  params.filterByCircularity = (bool)( (int)config::Get_int("blob_filterByCircularity") ); //true;
+  params.minCircularity = (float)config::Get_double("blob_minCircularity"); //0.1;
   
   // Filter by Convexity
-  params.filterByConvexity = false;
-  params.minConvexity = 0.87;
+  params.filterByConvexity = (bool)((int)config::Get_int("blob_filterByConvexity")); // false;
+  params.minConvexity = (float)config::Get_double("blob_minConvexity"); // 0.87;
   
   // Filter by Inertia
-  params.filterByInertia = false;
-  params.minInertiaRatio = 0.01;
-
+  params.filterByInertia = (bool)((int)config::Get_int("blob_filterByInertia")); //false;
+  params.minInertiaRatio = (float)config::Get_double("blob_minInertiaRatio"); //0.01;
+  
   return params;
 }
 
@@ -211,7 +232,7 @@ void save_img(cv::Mat img, std::string filename)
 {
   if( img.empty() )
     {
-      std::cout << "Couldn't open image " << filename << "\n";
+      std::cerr << "Couldn't open image " << filename << "\n";
       exit(1);
     }
   else
@@ -283,17 +304,17 @@ void order_blobs(std::vector<cv::Point2f> & pts, cv::Point2d center)
 void draw_index(cv::Mat img, std::vector<cv::Point2f> pts)
 {
     for (int i = 0; i < pts.size(); i++) {
-        cv::putText(img, std::to_string(i), pts[i], cv::FONT_HERSHEY_SIMPLEX, 5, cv::Scalar(255, 255, 255), 2);
+        cv::putText(img, std::to_string(i), pts[i], cv::FONT_HERSHEY_SIMPLEX, 3, cv::Scalar(255, 255, 255), 2);
     }
 }
 
 
 cv::Mat set_camera_matrix()
 {
-    double fx = 3554.84;  // Focal length in x direction
-    double fy = 3529.99646;  // Focal length in y direction
-    double cx = 4506.97897;  // Principal point x coordinate
-    double cy = 3192.566;  // Principal point y coordinate
+    double fx = (double)config::Get_double("camera_fx");  // Focal length in x direction
+    double fy = (double)config::Get_double("camera_fy");  // Focal length in y direction
+    double cx = (double)config::Get_double("camera_cx");  // Principal point x coordinate
+    double cy = (double)config::Get_double("camera_cy");  // Principal point y coordinate
 
     cv::Mat K = (cv::Mat_<double>(3, 3) << fx, 0, cx, 0, fy, cy, 0, 0, 1);
     return K;
@@ -434,7 +455,7 @@ void print_results(cv::Mat tvec, cv::Mat dev_tvec, cv::Mat rvec, cv::Mat dev_rve
     std::cout << "Uncertainty distance (tvec): " << delta_distance << " [m]" << std::endl;
 
     std::cout << "\nDistance from center of mPMT to camera (calculated with camera position RW): " << distance_rw << " [m]" << std::endl;
-    std::cout << "Uncertainty distance (camera position RW): " << delta_distance_rw << " [m]" << std::endl;
+    std::cout << "Uncertainty distance (camera position RW): " << delta_distance_rw << " [m]\n" << std::endl;
 }
 
 
@@ -538,13 +559,16 @@ std::vector< PMTIdentified > slow_ellipse_detection( const std::vector< cv::Vec3
       // annotate with bolt numbers and angles
       overlay_bolt_angle_boltid( ellipse_pmts, image_before );
       
-      string outputname = build_output_filename ( infname , "houghellipse_before");
-      std::cout<<"Writing image "<<outputname<<std::endl;
+      //string outputname = build_output_filename ( infname , "houghellipse_before");
+      string outputname = new_filename(infname);
+      std::cout<<"\nWriting image "<<outputname<<std::endl;
       imwrite (outputname, image_before );
     }
   return ellipse_pmts;
   }
   
+  std::cout << "do_ellipse_hough = 0. Exiting...\n";
+  exit(1);
   std::vector< PMTIdentified > null;
   return null;
 }
