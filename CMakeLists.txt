@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.2)
-project(photogrametry)
+project(photogrammetry)
 
 find_package(OpenCV REQUIRED)
 find_package( ROOT 6.18 CONFIG REQUIRED)
